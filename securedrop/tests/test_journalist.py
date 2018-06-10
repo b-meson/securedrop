@@ -7,6 +7,7 @@ import unittest
 import zipfile
 import base64
 
+from base64 import b64decode
 from cStringIO import StringIO
 from io import BytesIO
 from flask import url_for, escape, session, current_app, g
@@ -1057,6 +1058,50 @@ def test_admin_sets_user_to_admin(journalist_app, test_admin):
 
         journo = Journalist.query.filter_by(username=new_user).one()
         assert journo.is_admin is True
+
+
+# need a journalist app for the app context
+def test_passphrase_migration_on_verification(journalist_app):
+    salt = b64decode('+mGOQmD5Nnb+mH9gwBoxKRhKZmmJ6BzpmD5YArPHZsY=')
+    journalist = Journalist('test', VALID_PASSWORD)
+
+    # manually set the params
+    hash = journalist._scrypt_hash(VALID_PASSWORD, salt)
+    journalist.passphrase_hash = None
+    journalist.pw_salt = salt
+    journalist.pw_hash = hash
+
+    assert journalist.valid_password(VALID_PASSWORD)
+
+    # check that the migration happened
+    assert journalist.passphrase_hash is not None
+    assert journalist.pw_salt is None
+    assert journalist.pw_hash is None
+
+    # check that that a verification post-migration works
+    assert journalist.valid_password(VALID_PASSWORD)
+
+
+# need a journalist app for the app context
+def test_passphrase_migration_on_reset(journalist_app):
+    salt = b64decode('+mGOQmD5Nnb+mH9gwBoxKRhKZmmJ6BzpmD5YArPHZsY=')
+    journalist = Journalist('test', VALID_PASSWORD)
+
+    # manually set the params
+    hash = journalist._scrypt_hash(VALID_PASSWORD, salt)
+    journalist.passphrase_hash = None
+    journalist.pw_salt = salt
+    journalist.pw_hash = hash
+
+    journalist.set_password(VALID_PASSWORD)
+
+    # check that the migration happened
+    assert journalist.passphrase_hash is not None
+    assert journalist.pw_salt is None
+    assert journalist.pw_hash is None
+
+    # check that that a verification post-migration works
+    assert journalist.valid_password(VALID_PASSWORD)
 
 
 class TestJournalistApp(TestCase):
