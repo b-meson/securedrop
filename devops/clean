@@ -15,6 +15,11 @@ function remove_unwanted_files() {
         install_files/ansible-base/mon-ssh-aths \
         build/*.deb
 
+    # Remove extraneous copies of the git repos, pulled in
+    # via the Molecule upgrade testing scenario.
+    rm -rf molecule/upgrade/.molecule/sd-orig \
+        molecule/vagrant_packager/.molecule/sd-orig
+
     # Python bytecode, left over from tests or local app runs.
     find -type f -iname '*.pyc' -delete
 
@@ -25,9 +30,18 @@ function remove_unwanted_files() {
     # virtualenv for securedrop-admin script.
     rm -rvf securedrop/static/.webassets-cache .venv
 
-    # Any and all git-ignored files, if present. Includes e.g.
-    # deb packages in build/
-    git clean -f -x
+    # Any Vagrant VMs should be destroyed. We check for the .vagrant/
+    # directory, because it'll be created by vagrant otherwise, breaking
+    # idempotence for the cleanup action.
+    if hash vagrant &> /dev/null && [[ -d .vagrant/ ]]
+    then
+        printf "Removing vagrant VMs\\n"
+        vagrant destroy -f > /dev/null
+    fi
+
+    # Any and all git-ignored files and directories, if present. Includes e.g.
+    # deb packages in build/, and VM information stored locally.
+    git clean -X -d -f
 }
 
 
