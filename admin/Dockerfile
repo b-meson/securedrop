@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
      gnupg2 \
      python-virtualenv \
      git && apt-get clean
-RUN if test $USER_NAME != root ; then useradd --no-create-home --home-dir /tmp --uid $USER_ID $USER_NAME && echo "$USER_NAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers ; fi
+RUN if test $USER_NAME != root ; then useradd --no-create-home --home-dir /tmp --uid $USER_ID $USER_NAME; fi
 
 WORKDIR /opt
 RUN chown -R $USER_NAME /opt
