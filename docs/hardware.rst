@@ -488,7 +488,7 @@ anywhere.
 Network Firewall
 ^^^^^^^^^^^^^^^^
 
-We recommend the `pfSense SG-4860 <https://store.netgate.com/SG-4860.aspx>`__.
+We recommend the `pfSense SG-3100 <https://www.netgate.com/solutions/pfsense/sg-3100.html>`__.
 
 Network Switch
 ^^^^^^^^^^^^^^

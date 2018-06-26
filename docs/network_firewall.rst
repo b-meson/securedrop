@@ -7,24 +7,22 @@ to access the Network Firewall's web interface for configuration.
 
 Unfortunately, due to the wide variety of firewalls that may be used, we
 do not provide specific instructions to cover every type or variation in
-software or hardware.
-However, if you have the necessary
-expertise, we provide `abstract firewall rules`_ that can be
-implemented with iptables, Cisco IOS etc.
-This guide is based on pfSense, and assumes your
-firewall hardware has at least three interfaces: WAN, LAN, and OPT1. For
-hardware, you can build your own network firewall (not covered in this
-guide) and `install
+software or hardware. However, if you have the necessary expertise, we provide
+`abstract firewall rules`_ that can be implemented with iptables, Cisco IOS etc.
+This guide is based on pfSense, and assumes your firewall hardware has at least
+three interfaces: WAN, LAN, and OPT1. For hardware, you can build your own
+network firewall (not covered in this guide) and `install
 pfSense <https://doc.pfsense.org/index.php/Installing_pfSense>`__ on it.
 For most installations, we recommend buying a dedicated firewall
 appliance with pfSense pre-installed, such as the one recommended in the
 Hardware Guide.
 
-We currently recommend the `pfSense SG-4860
-<https://store.netgate.com/SG-4860.aspx>`__, which has 6 interfaces: WAN,
-LAN, OPT1, OPT2, OPT3 and OPT4. If your firewall only has 3 NICs (WAN,
-LAN, and OPT1), you will need to use a switch on the OPT1 interface
-to connect the *Admin Workstation* for the initial installation.
+We currently recommend the `pfSense SG-3100
+<https://www.netgate.com/solutions/pfsense/sg-3100.html>`__, which has 6
+interfaces: WAN, OPT1, and four LAN ports. Thankfully, the LAN ports come equipt
+with an integrated switch so there is no need to purchase an additional
+switch. You will connect to the LAN interface from the *Admin Workstation* for
+the initial installation.
 
 If you are new to pfSense or firewall management in general, we
 recommend the following resources:
@@ -34,19 +32,16 @@ recommend the following resources:
 -  `pfSense: The Definitive
    Guide <https://www.amazon.com/pfSense-Definitive-Christopher-M-Buechler/dp/0979034280>`__
 
-   -  *Note:* This guide is now slightly out of date, although we found
+.. note:: This guide is now slightly out of date, although we found 
       it to be a useful reference in the past. To get the latest version of
       this book, you need to become a `pfSense Gold
       Member <https://www.pfsense.org/our-services/gold-membership.html>`__.
 
-If you're using the recommended SG-4860 firewall, then you may find the
-following resources useful:
+If you're using the recommended SG-3100 firewall, then you may find the
+product manual useful. Instructions for factory resetting the firewall are in 
+``Section 1.3``:
 
--  `SG-4860
-   Quick Start Guide <https://www.netgate.com/docs/pfsense/sg-4860/quick-start-guide.html>`__
--  `Factory Reset of the SG-4860 (video) <https://vimeo.com/143197016>`__
--  `Connecting
-   to the SG-4860 Console <https://www.netgate.com/docs/pfsense/sg-4860/connect-to-console.html>`__
+-  `SG-3100 Product Manual <https://www.netgate.com/docs/manuals/sg-3100-product-manual.pdf>`__
 
 Before You Begin
 ----------------
@@ -69,35 +64,35 @@ network so it is working correctly.
 Configuring Your Firewall
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If your firewall has at least 4 NICs, as the SG-4860 does, we will refer to the
-ports as WAN, LAN, OPT1, and OPT2. In this case, we can now use a
-dedicated port on the network firewall for each component of SecureDrop
-(*Application Server*, *Monitor Server*, and *Admin Workstation*), so
-you do not need a switch like you do for a 3-NIC configuration.
-
+We refer to the SG-3100 as a 3-NIC firewall with 4 switched LAN ports. You
+should see the following interfaces: OPT1, WAN and LAN1, LAN2, LAN3, and LAN4.
+In this case, we will use a dedicated port on only one component of SecureDrop
+which is the *Monitor Server*. The *Application Server* and the 
+*Admin Workstation* will share the LAN interface.
+ 
 Depending on your network configuration, you should define the following
 values before continuing. For the examples in this guide, we have
 chosen:
 
 -  Admin Subnet: ``10.20.1.0/24``
 -  Admin Gateway: ``10.20.1.1``
--  Admin Workstation: ``10.20.1.2``
+-  Admin Workstation (LAN 1): ``10.20.1.3``
 
 .. raw:: html
 
    <!-- -->
 
--  Application Subnet: ``10.20.2.0/24``
--  Application Gateway: ``10.20.2.1``
--  Application Server (OPT1): ``10.20.2.2``
+-  Monitor Subnet: ``10.20.2.0/24``
+-  Monitor Gateway: ``10.20.2.1``
+-  Monitor Server (OPT1): ``10.20.2.2``
 
 .. raw:: html
 
    <!-- -->
 
--  Monitor Subnet: ``10.20.3.0/24``
--  Monitor Gateway: ``10.20.3.1``
--  Monitor Server (OPT2) : ``10.20.3.2``
+-  Application Subnet: ``10.20.1.0/24``
+-  Application Gateway: ``10.20.1.1``
+-  Application Server (LAN 2) : ``10.20.1.2``
 
 Initial Configuration
 ---------------------
@@ -309,7 +304,7 @@ Change to the **IPv4 Settings** tab. Change **Addresses** from
 
 Fill in the static networking information for the *Admin Workstation*:
 
--  Address: ``10.20.1.2``
+-  Address: ``10.20.1.3``
 -  Netmask: ``255.255.255.0``
 -  Gateway : ``10.20.1.1``
 
@@ -371,12 +366,30 @@ In order to use the firewall to isolate the *Application Server* and the *Monito
 Server* from each other, we need to connect them to separate interfaces, and then set
 up firewall rules that allow them to communicate.
 
+Set Up LAN
+~~~~~~~~~~~
+
+You may have noticed that the *Application Server* and the *Admin Workstaton*
+are setup on the same subnet. We need to set a static IP to the LAN interface
+so that they can communicate with each other on the same subnet. Go to
+**Interfaces ▸ LAN**, and check the box to **Enable Interface**. We have to
+assign it a static IP and enable a route: 
+
+-  IPv4 Configuration Type: Static IPv4
+-  IPv4 Address: ``10.20.1.1`` (Application / Admin Gateway IP)
+
+Make sure that the CIDR routing prefix is correct (``/24``). Leave everything else
+as the default. **Save** and **Apply Changes**.
+
+|LAN|
+
+
 Set Up OPT1
 ~~~~~~~~~~~
 
 We set up the LAN interface during the initial configuration. We now
-need to set up the OPT1 interface for the *Application Server*. Start by
-connecting the *Application Server* to the OPT1 port. Then use the WebGUI
+need to set up the OPT1 interface for the *Monitor Server*. Start by
+connecting the *Monitor Server* to the OPT1 port. Then use the WebGUI
 to configure the OPT1 interface. Go to **Interfaces ▸ OPT1**, and check
 the box to **Enable Interface**. Use these settings:
 
@@ -387,22 +400,6 @@ Make sure that the CIDR routing prefix is correct (``/24``). Leave everything el
 as the default. **Save** and **Apply Changes**.
 
 |OPT1|
-
-Set Up OPT2
-~~~~~~~~~~~
-
-Next, you will have to enable the OPT2 interface. Go to
-**Interfaces ▸ OPT2**, and check the box to **Enable Interface**. OPT2
-interface is set up similarly to how we set up OPT1 in the previous
-section. Use these settings:
-
--  IPv4 Configuration Type: Static IPv4
--  IPv4 Address: ``10.20.3.1`` (Monitor Gateway IP)
-
-Make sure that the CIDR routing prefix is correct (``/24``). Leave everything else
-as the default. **Save** and **Apply Changes**.
-
-|OPT2|
 
 Set Up the Firewall Rules
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -432,10 +429,10 @@ Next you will click **Add** to add each IP alias.
 You should leave the **Type** as **Host**.
 Make aliases for the following:
 
-- ``admin_workstation``: ``10.20.1.2``
-- ``app_server``: ``10.20.2.2``
+- ``admin_workstation``: ``10.20.1.3``
+- ``app_server``: ``10.20.1.2``
 - ``external_dns_servers``: ``8.8.8.8, 8.8.4.4``
-- ``monitor_server``: ``10.20.3.2``
+- ``monitor_server``: ``10.20.2.2``
 - ``local_servers``: ``app_server, monitor_server``
 
 |Add Firewall Alias|
@@ -461,7 +458,7 @@ Your configuration should match this screenshot:
 |Port Aliases|
 
 Next we will configure firewall rules for each interface. Navigate to **Firewall ▸
-Rules** to add firewall rules for the LAN, OPT1, and OPT2 interfaces.
+Rules** to add firewall rules for the LAN, and OPT1 interfaces.
 
 .. warning:: Be sure not to delete the Anti-Lockout Rule on the LAN interface.
     Deleting this rule will lock you out of the pfSense WebGUI.
@@ -476,10 +473,6 @@ to add a rule.
 **OPT1 interface:**
 
 |Firewall OPT1 Rules|
-
-**OPT2 interface:**
-
-|Firewall OPT2 Rules|
 
 Finally, click **Apply Changes**. This will save your changes. You should see a
 message "The changes have been applied successfully". Once you've set up the
@@ -586,8 +579,8 @@ Once it is complete, you will see a notification of successful upgrade:
 .. |Tails Network Settings| image:: images/firewall/tails_network_settings.png
 .. |IPv4 Settings| image:: images/firewall/IPv4_settings.png
 .. |Disable DHCP| image:: images/firewall/disable_DHCP.png
+.. |LAN| image:: images/firewall/lan.png
 .. |OPT1| image:: images/firewall/opt1.png
-.. |OPT2| image:: images/firewall/opt2.png
 .. |Blank IP Aliases| image:: images/firewall/pfsense_blank_ip_aliases.png
 .. |Add Firewall Alias| image:: images/firewall/add_firewall_alias.png
 .. |Firewall IP Aliases Pre Save| image:: images/firewall/ip_aliases_pre_save.png
